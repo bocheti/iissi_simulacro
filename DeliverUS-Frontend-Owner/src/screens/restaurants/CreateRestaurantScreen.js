@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Image, Platform, Pressable, ScrollView, StyleSheet, View, Switch } from 'react-native'
 import * as ExpoImagePicker from 'expo-image-picker'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as yup from 'yup'
 import DropDownPicker from 'react-native-dropdown-picker'
-import { create, getRestaurantCategories } from '../../api/RestaurantEndpoints'
+import { create, getRestaurantCategories, getAll } from '../../api/RestaurantEndpoints'
 import InputItem from '../../components/InputItem'
 import TextRegular from '../../components/TextRegular'
 import * as GlobalStyles from '../../styles/GlobalStyles'
@@ -107,6 +107,11 @@ export default function CreateRestaurantScreen ({ navigation }) {
   const createRestaurant = async (values) => {
     setBackendErrors([])
     try {
+      const restaurants = await getAll()
+      const promotedRestaurant = restaurants.find((x) => x.promoted)
+      if (promotedRestaurant !== undefined) {
+        throw new Error()
+      }
       const createdRestaurant = await create(values)
       showMessage({
         message: `Restaurant ${createdRestaurant.name} succesfully created`,
@@ -116,10 +121,15 @@ export default function CreateRestaurantScreen ({ navigation }) {
       })
       navigation.navigate('RestaurantsScreen', { dirty: true })
     } catch (error) {
-      console.log(error)
-      setBackendErrors(error.errors)
+      showMessage({
+        message: 'User already has a promoted restaurant',
+        type: 'error',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
     }
   }
+
   return (
     <Formik
       validationSchema={validationSchema}
@@ -177,6 +187,17 @@ export default function CreateRestaurantScreen ({ navigation }) {
                 dropDownStyle={{ backgroundColor: '#fafafa' }}
               />
               <ErrorMessage name={'restaurantCategoryId'} render={msg => <TextError>{msg}</TextError> }/>
+
+              <TextRegular style={{ marginTop: 20 }}>Is it promoted?</TextRegular>
+              <Switch
+                trackColor={{ false: GlobalStyles.brandSecondary, true: GlobalStyles.brandPrimary }}
+                thumbColor={values.promoted ? GlobalStyles.brandSecondary : '#f4f3f4'}
+                value={values.promoted}
+                style={styles.switch}
+                onValueChange={value =>
+                  setFieldValue('promoted', value)
+                }
+              />
 
               <Pressable onPress={() =>
                 pickImage(

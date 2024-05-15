@@ -25,10 +25,11 @@ const indexOwner = async function (req, res) {
       {
         attributes: { exclude: ['userId'] },
         where: { userId: req.user.id },
-        include: [{
+        include: {
           model: RestaurantCategory,
           as: 'restaurantCategory'
-        }]
+        },
+        order: [['promoted', 'DESC']]
       })
     res.json(restaurants)
   } catch (err) {
@@ -95,12 +96,45 @@ const destroy = async function (req, res) {
   }
 }
 
+const promote = async function (req, res) {
+  try {
+    const promotedRestaurant = await Restaurant.findOne(
+      {
+        attributes: { exclude: ['userId'] },
+        where: { userId: req.user.id, promoted: true },
+        include: [{
+          model: RestaurantCategory,
+          as: 'restaurantCategory'
+        }]
+      })
+    if (promotedRestaurant !== null && promotedRestaurant.id !== parseInt(req.params.restaurantId, 10)) {
+      promotedRestaurant.promoted = false
+      promotedRestaurant.save()
+    }
+    const restaurantToPromote = await Restaurant.findByPk(req.params.restaurantId)
+    if (restaurantToPromote.promoted === false) {
+      restaurantToPromote.promoted = true
+    }
+    const result = restaurantToPromote.save()
+    let message = ''
+    if (result === 1) {
+      message = 'Sucessfuly promoted restaurant id.' + req.params.restaurantId
+    } else {
+      message = 'Could not promote restaurant.'
+    }
+    res.json(message)
+  } catch (err) {
+    res.status(500).send(err)
+  }
+}
+
 const RestaurantController = {
   index,
   indexOwner,
   create,
   show,
   update,
-  destroy
+  destroy,
+  promote
 }
 export default RestaurantController
